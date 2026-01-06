@@ -1,0 +1,44 @@
+---
+- name: Deploy Website Template
+  hosts: webservers
+  become: yes
+
+  pre_tasks:
+    - name: Display deployment information
+      debug:
+        msg:
+          - "Deploying {{ template_type }} template"
+          - "Domain: {{ website_domain }}"
+          - "Target: {{ inventory_hostname }}"
+
+  roles:
+    - web_template
+
+  post_tasks:
+    - name: Ensure nginx is running
+      service:
+        name: nginx
+        state: started
+
+    - name: Wait for nginx port
+      wait_for:
+        port: 80
+        delay: 2
+        timeout: 30
+
+    - name: Check website
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        status_code: 200
+      register: site_check
+      retries: 5
+      delay: 3
+      until: site_check.status == 200
+      ignore_errors: yes
+
+    - name: Deployment success
+      debug:
+        msg:
+          - "✅ Deployment completed successfully!"
+          - "🌐 URL: http://{{ ansible_default_ipv4.address }}"
+          - "📁 Root: {{ app_directory }}"

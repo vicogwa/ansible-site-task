@@ -1,0 +1,98 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Install required packages
+  apt:
+    name:
+      - nginx
+      - unzip
+      - curl
+    state: present
+
+- name: Create website directory
+  file:
+    path: "{{ app_directory }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Clean old temp directory
+  file:
+    path: /tmp/template_download
+    state: absent
+
+- name: Create fresh temp directory
+  file:
+    path: /tmp/template_download
+    state: directory
+
+- name: Download template
+  get_url:
+    url: "{{ templates[template_type].url }}"
+    dest: /tmp/template.zip
+
+- name: Extract template
+  unarchive:
+    src: /tmp/template.zip
+    dest: /tmp/template_download/
+    remote_src: yes
+
+- name: Copy all template files
+  shell: cp -r /tmp/template_download/* {{ app_directory }}/
+  args:
+    executable: /bin/bash
+
+- name: Set ownership
+  file:
+    path: "{{ app_directory }}"
+    owner: www-data
+    group: www-data
+    recurse: yes
+
+- name: Verify index.html
+  stat:
+    path: "{{ app_directory }}/index.html"
+  register: idx
+
+- name: Fail if no index.html
+  fail:
+    msg: "index.html missing"
+  when: not idx.stat.exists
+
+- name: Configure nginx
+  template:
+    src: nginx_site.conf.j2
+    dest: /etc/nginx/sites-available/{{ website_domain }}
+  notify: reload nginx
+
+- name: Enable site
+  file:
+    src: /etc/nginx/sites-available/{{ website_domain }}
+    dest: /etc/nginx/sites-enabled/{{ website_domain }}
+    state: link
+  notify: reload nginx
+
+- name: Remove default
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: reload nginx
+
+- name: Start nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Cleanup
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/template_download
+    - /tmp/template.zip

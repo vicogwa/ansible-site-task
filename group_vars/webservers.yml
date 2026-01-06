@@ -1,0 +1,28 @@
+# Website configuration
+website_domain: storisite.serveftp.com
+website_name: "Story Website"
+admin_email: victoriafrancis885@gmail.com
+
+# Template selection
+template_type: html5up_story
+
+templates:
+  html5up_story:
+    url: "https://html5up.net/story/download"
+    filename: "story.zip"
+
+# Paths
+app_root: /var/www
+app_directory: "{{ app_root }}/{{ website_domain }}"
+
+# Nginx paths
+nginx_config_path: /etc/nginx/sites-available/{{ website_domain }}
+nginx_enabled_path: /etc/nginx/sites-enabled/{{ website_domain }}
+
+# PHP
+php_enabled: false
+
+# SSL
+ssl_enabled: false
+ssl_cert_path: /etc/ssl/certs/{{ website_domain }}.crt
+ssl_key_path: /etc/ssl/private/{{ website_domain }}.key
